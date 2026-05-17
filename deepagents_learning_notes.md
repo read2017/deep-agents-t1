@@ -3,8 +3,15 @@
 ## 当前阶段
 
 - 学习主题：LangChain Deep Agents 入门
-- 当前进度：已完成 `demo_01`、`demo_02`、`demo_03`
-- 当前阶段判断：已经理解主线概念，正在从“会跑 demo”进入“能区分设计边界”
+- 当前进度：已完成 `demo_01`、`demo_02`、`demo_03`、`demo_04`
+- 已开始接触：
+  - 微项目设计
+  - 运行日志阅读
+  - long-term memory
+- 当前阶段判断：
+  - 已经理解主线概念
+  - 已经能区分 `tool / skill / subagent`
+  - 已开始具备阅读 agent 运行轨迹的能力
 
 ## 已学内容总览
 
@@ -80,6 +87,25 @@
 - 当前理解：
   - `skill` 是指导流程，不是执行角色
 
+### demo_04_composition.py
+
+- 目标：理解 `tool + skill + subagent` 如何组合
+- 关键点：
+  - tool 负责能力调用
+  - skill 负责处理套路
+  - subagent 负责完整子任务执行
+- 当前理解：
+  - 不同层不是“谁更高级”，而是职责不同
+
+### demo_05_memory.py
+
+- 目标：理解 long-term memory 和 thread history 的区别
+- 关键点：
+  - 对话历史只属于当前 thread
+  - memory 文件 + backend/store 可以跨 thread 生效
+- 当前理解：
+  - 记忆能力不是普通聊天上下文，而是持久化能力
+
 ## 关键理解纠正
 
 ### 纠正 1：Deep Agents 不是“更聪明的聊天”
@@ -115,6 +141,16 @@
     - `tools`
     - `subagents`
   - 走普通执行路径
+
+### 纠正 5：不能用“是否调用 tool”来判断“是否调用了 subagent”
+
+- 容易出现的误解：
+  - 看到 tool 被调，就以为一定触发了 subagent
+- 正确认识：
+  - 主 agent 自己也可以直接调用 tool
+  - subagent 也可以调用 tool
+  - subagent 甚至可能一个 tool 都不调
+  - 所以判断 subagent，要看是否真的出现 `task(subagent_type=...)`
 
 ## 错题本
 
@@ -310,6 +346,95 @@
   - 是否需要独立子任务
   - 是否值得上下文隔离
 
+## 微项目学习记录
+
+### 项目：learning_assistant
+
+- 对应文件：
+  - [learning_assistant.py](/Users/liangzhe/workspace/codex/deep-agents-t1/deepagents_project/learning_assistant.py)
+- 目标：
+  - 用一个最小真实项目把 `tool + skill + subagent` 落地
+- 当前结构：
+  - tools：
+    - `search_reference`
+    - `generate_questions`
+    - `save_note`
+  - skills：
+    - `teaching-flow`
+    - `mastery-check`
+  - subagents：
+    - `assessor`
+    - `lesson_pack_builder`
+
+### 当前最关键的项目理解
+
+- 主 agent 负责统筹和结果整合
+- tools 负责基础动作
+- skills 负责稳定工作流
+- subagents 负责完整子任务
+- 不是每次运行都会触发 subagent
+
+## 日志与调试能力学习记录
+
+### 为什么需要运行日志
+
+- 只看最终回答，看不出 agent 中间做了什么
+- 学习 Deep Agents 时，关键不只是“结果对不对”，而是：
+  - 模型推理了几轮
+  - 调了哪些 tools
+  - 有没有触发 subagent
+  - 最终结果是主 agent 自己整合，还是委托后汇总
+
+### 当前日志系统
+
+- 已把微项目日志切到 `loguru`
+- 已接入 `astream_events()` 做事件流观察
+- 当前会输出：
+  - agent 启动
+  - 模型第几轮开始/结束
+  - tool 开始/结束
+  - 是否真正 dispatch 了 subagent
+  - 最终运行摘要
+
+### 日志阅读的关键规则
+
+- `Model round N started/finished`
+  - 表示第 N 轮模型推理
+- `Tool started/finished`
+  - 表示真实工具调用
+- `Subagent dispatched: xxx`
+  - 只有看到这一类高置信度日志，才能判断真的触发了 subagent
+- `save_note`
+  - 这是脚本层收尾动作，不是 agent graph 内部的核心决策链
+
+### 当前一次真实运行的结论
+
+- 运行形态：
+  - 两轮模型推理
+  - 两个 tool 调用
+  - 没有触发 subagent
+- 可复述成：
+  - 主 agent 第 1 轮思考
+  - 调 `search_reference` 和 `generate_questions`
+  - 主 agent 第 2 轮整合输出
+  - 脚本最后调用 `save_note`
+
+## 新增运行与工程问题记录
+
+### 问题 4：`stream_events(version='v2') is not supported`
+
+- 原因：
+  - 当前 `CompiledStateGraph` 不支持同步版 `stream_events(version='v2')`
+- 纠正：
+  - 改用 `astream_events()` 并通过 `asyncio.run(...)` 包装
+
+### 问题 5：日志误判 subagent
+
+- 原因：
+  - 之前使用了宽松的启发式检测，把太多 graph 事件都标成“possible subagent/task”
+- 纠正：
+  - 只在检测到 `task` tool 且参数里存在 `subagent_type` 时，才打印真正的 subagent dispatch 日志
+
 ## 运行与工程问题记录
 
 ### 问题 1：`ModuleNotFoundError: No module named 'deepagents'`
@@ -362,6 +487,21 @@
   - memory 文件、backend、store 各自扮演什么角色
 - 对应示例：
   - [demo_05_memory.py](/Users/liangzhe/workspace/codex/deep-agents-t1/deepagents_demo/demo_05_memory.py)
+
+## 今天的阶段结论
+
+- 已掌握：
+  - Deep Agents 不是模型，而是 agent harness
+  - `tool / skill / subagent` 的职责边界
+  - 什么时候更可能走 `A/B/C/D` 这些执行路径
+  - 如何从简化日志中读出：
+    - 第几轮模型推理
+    - 哪些 tools 被调用
+    - 有没有真正 dispatch subagent
+- 下一次继续时，优先学习：
+  - long-term memory
+  - backend / store / memory file 三者关系
+  - 如何设计真正跨 thread 生效的 agent 记忆
 
 ## 后续维护规则
 
