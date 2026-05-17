@@ -1,0 +1,15 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+
+# uv cache
+.uv-cache/
+
+# Local environment files
+.env
+
+# macOS
+.DS_Store

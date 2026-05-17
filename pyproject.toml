@@ -1,0 +1,17 @@
+[project]
+name = "deep-agents-t1"
+version = "0.1.0"
+description = "Minimal Deep Agents learning demos"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "deepagents",
+    "langchain",
+    "langchain-openai",
+    "loguru>=0.7.3",
+    "python-dotenv",
+    "tavily-python>=0.7.24",
+]
+
+[tool.uv]
+package = false

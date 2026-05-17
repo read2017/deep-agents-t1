@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI 全栈导师 Eva"
+  short_description: "项目驱动的 AI 全栈学习导师与项目陪练 Skill"
+  default_prompt: "Use $learn-ai-fullstack to teach me an AI full-stack topic step by step with official docs, practical examples, and a small project."

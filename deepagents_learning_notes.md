@@ -1,0 +1,374 @@
+# Deep Agents 学习笔记
+
+## 当前阶段
+
+- 学习主题：LangChain Deep Agents 入门
+- 当前进度：已完成 `demo_01`、`demo_02`、`demo_03`
+- 当前阶段判断：已经理解主线概念，正在从“会跑 demo”进入“能区分设计边界”
+
+## 已学内容总览
+
+### 1. Deep Agents 是什么
+
+- `Deep Agents` 不是模型，而是建立在 `LangChain + LangGraph` 之上的 agent harness
+- 它适合处理复杂任务，不只是做单轮问答
+- 它强调的是：
+  - planning
+  - tools
+  - delegation
+  - context management
+  - progressive disclosure
+
+### 2. 和普通 agent 的区别
+
+- 普通 agent 更适合较短、较直接的工具调用任务
+- Deep Agents 更适合多步骤、长流程、需要分工和上下文管理的任务
+- Deep Agents 的重点不是“更像聊天”，而是“更像持续执行任务”
+
+### 3. subagent 的核心价值
+
+- `subagent` 的第一价值是上下文隔离
+- 主 agent 不需要持有所有中间细节，只需要拿回子任务结果
+- 使用 subagent 的核心目的不是“多智能体更高级”，而是“把复杂任务拆给更合适的执行角色”
+
+### 4. skill 的核心价值
+
+- `skill` 更像流程说明包/方法论包
+- 它告诉 agent：遇到某类任务时，应该按什么思路处理
+- `skill` 不是执行者，真正执行任务的仍然是 agent 自己
+- `skill` 的设计价值包括：
+  - 按需加载
+  - 节省 token 和上下文
+  - 把特定任务套路文件化
+
+### 5. progressive disclosure 是什么
+
+- agent 不会一开始把所有 skill 内容全读进上下文
+- 它会先看 skill 的描述是否匹配当前任务
+- 只有匹配时，才进一步读取 `SKILL.md`
+- 如果 `SKILL.md` 还引用其他参考文件，agent 才可能继续读取那些文件
+
+## Demo 学习记录
+
+### demo_01_basic.py
+
+- 目标：理解 `create_deep_agent(...)` 的最小使用方式
+- 关键点：
+  - 主 agent 挂普通 tool
+  - 没有 subagent
+  - `agent.invoke(...)` 是主执行入口
+- 当前理解：
+  - 这是“主 agent + tool”的最小闭环
+
+### demo_02_subagents.py
+
+- 目标：理解 subagent 如何参与分工
+- 关键点：
+  - 主 agent 负责协调
+  - `researcher` 负责概念/事实
+  - `coach` 负责学习计划/题目
+- 当前理解：
+  - 是否调用 subagent 由主 agent 决策
+  - subagent 是否调用自己的 tools，由 subagent 决策
+
+### demo_03_skills.py
+
+- 目标：理解 skill 如何匹配与加载
+- 关键点：
+  - `skills=[...]` 传的是技能目录
+  - agent 先按描述匹配，再按需读取 `SKILL.md`
+- 当前理解：
+  - `skill` 是指导流程，不是执行角色
+
+## 关键理解纠正
+
+### 纠正 1：Deep Agents 不是“更聪明的聊天”
+
+- 之前容易误以为：它只是回答更复杂
+- 正确认识：
+  - 它的重点是执行复杂任务
+  - 关注点应该放在工具、规划、上下文和验证，而不只是提示词
+
+### 纠正 2：subagent 的重点不是“多几个 agent”
+
+- 容易出现的误解：
+  - 以为 subagent 只是为了做 multi-agent 架构
+- 正确认识：
+  - 它最重要的作用是上下文隔离和职责拆分
+
+### 纠正 3：skill 不是执行者
+
+- 曾经的模糊点：
+  - 把 `skill` 想成固定工作流本身在执行任务
+- 正确认识：
+  - `skill` 是指导 agent 如何处理某类任务的说明包
+  - 真正执行任务的还是主 agent
+
+### 纠正 4：没有命中 skill，不代表 agent 不工作
+
+- 曾经的错误回答：
+  - “不用 agent，自己完成任务”
+- 正确认识：
+  - 如果没有 skill 命中，Deep Agent 仍然会继续工作
+  - 它会依据：
+    - `system prompt`
+    - `tools`
+    - `subagents`
+  - 走普通执行路径
+
+## 错题本
+
+### 错题 1
+
+- 题目：`skills` 和 `subagents` 最本质的区别是什么？
+- 当时回答：`skills` 是一个固定的工作流程，没有自主决策
+- 问题所在：
+  - 只答到了“流程”，没答到“角色边界”
+  - 没区分“指导任务处理”和“真正执行子任务”
+- 正确答案：
+  - `skill` 更像流程说明包/方法论包
+  - `subagent` 更像执行者，负责被委托的子任务
+
+### 错题 2
+
+- 题目：如果一个任务完全不匹配任何 skill，Deep Agent 会怎样工作？
+- 当时回答：不用 agent，自己完成任务
+- 问题所在：
+  - 误以为 skill 是 agent 工作的前提
+- 正确答案：
+  - Deep Agent 仍会继续工作
+  - 只是不会加载任何 skill
+  - 会回到 `system prompt + tools + subagents` 的普通路径
+
+### 错题 3
+
+- 题目：给学习助手设计 2 个 subagents
+- 当时回答：
+  - 阶段性小节测验
+  - 某章节教学包生成
+- 问题所在：
+  - 这里写成了“任务名”，而不是“执行角色”
+  - `subagent` 应该表示一个可被反复委托的工作角色，而不是某一次具体产出
+- 正确理解：
+  - `subagent` 更适合定义成：
+    - `assessor` / 测评助手
+    - `lesson_pack_builder` / 教学包生成助手
+    - `researcher` / 资料研究助手
+    - `coach` / 学习辅导助手
+  - 然后再由这些角色去完成：
+    - 阶段性小节测验
+    - 某章节教学包生成
+    - 薄弱点分析
+    - 对比整理
+
+## 新一轮设计练习记录
+
+### 用户给出的初版分层
+
+- tools：
+  - 记笔记
+  - 出题目
+  - 查资料
+- skills：
+  - 教学流程
+  - 掌握度检查流程
+- subagents：
+  - 阶段性小节测验
+  - 某章节教学包生成
+
+### 当前点评
+
+- `tools` 方向是对的
+- `skills` 方向也是对的
+- `subagents` 需要从“任务名”改成“角色名”
+
+### 更合理的一版
+
+- tools：
+  - `save_note`
+  - `generate_questions`
+  - `search_reference`
+- skills：
+  - `teaching-flow`
+  - `mastery-check`
+- subagents：
+  - `assessor`
+    - 负责阶段测验、掌握度检查、薄弱点反馈
+  - `lesson_pack_builder`
+    - 负责章节学习包、练习组织、复习建议整合
+
+### 用户给出的第二版最小架构
+
+- 主 agent：
+  - 统筹全局帮助用户学习
+  - 执行任务
+  - 调用 skill、tool、subagent
+  - 返回结果
+- tools：
+  - 查资料
+  - 出题目
+  - 记笔记
+- skills：
+  - 教学流程
+  - 掌握度检查流程
+- subagents：
+  - 测评助手
+  - 教学包生成助手
+- 调用链理解：
+  - 主 agent 先查资料
+  - 再调用教学流程 skill
+  - 再调用教学包生成助手生成章节教学包
+  - 用户完成单元学习后再记笔记、出题或调用测评助手
+
+### 这一版的进步
+
+- 已经能清楚区分：
+  - 主 agent 负责统筹
+  - tool 负责动作
+  - skill 负责流程
+  - subagent 负责完整子任务
+- `subagent` 这次已经改成了“角色名”，这是明显进步
+
+### 这一版还需要纠正的点
+
+- 问题 1：把主 agent 写成“执行任务”有点宽泛
+  - 更准确的说法应是：
+    - 主 agent 负责理解用户目标
+    - 决定当前该用哪个 skill
+    - 判断是否需要 tool 或 subagent
+    - 汇总结果并继续推进下一步
+
+- 问题 2：调用链里不应该默认“每次都先查资料”
+  - 更合理的理解是：
+    - 主 agent 先判断当前任务类型
+    - 如果缺资料，再调用 `search_reference`
+    - 如果只是复盘或测验，不一定需要查资料
+
+- 问题 3：`记笔记` 更适合放在收尾或状态更新阶段
+  - 它通常不是核心教学流程的最前置动作
+  - 更像学习闭环中的记录动作
+
+### 当前更成熟的一版调用链
+
+1. 用户发出学习请求
+2. 主 agent 判断这是“讲解 / 练习 / 测评 / 复盘”中的哪一类
+3. 主 agent 决定是否匹配 `teaching-flow` 或 `mastery-check`
+4. 如果缺外部事实或参考资料，再调用 `search_reference`
+5. 如果任务是完整章节学习包，委托 `lesson_pack_builder`
+6. 如果任务是阶段测评或薄弱点诊断，委托 `assessor`
+7. 主 agent 汇总结果
+8. 如有必要，调用 `save_note` 记录学习要点、错题和本轮结论
+
+## 执行路径判断练习
+
+### 当前路径分类
+
+- `A`：主 agent 直接回答
+- `B`：主 agent + tools
+- `C`：主 agent + subagent
+- `D`：主 agent + tools + subagent
+
+### 新一轮用户自拟场景
+
+- 场景 1：阶段性章节知识检测
+  - 用户判断：`D`
+- 场景 2：根据当前学习进度生成学习计划
+  - 用户判断：`B`
+
+### 本轮 review
+
+- 场景 1：`阶段性章节知识检测`
+  - `D` 可以成立，但不是唯一答案
+  - 如果检测范围较小，只是：
+    - 出几道题
+    - 做一个简单掌握度判断
+    - 记录结果
+    - 那么 `B` 就够了
+  - 只有当任务变成：
+    - 读取较多学习记录
+    - 汇总多轮错题
+    - 分析薄弱点
+    - 生成阶段报告
+    - 才更像 `D`
+
+- 场景 2：`根据当前学习进度生成学习计划`
+  - `B` 是合理答案
+  - 如果只是读取当前进度、结合模板生成计划，主 agent + tools 往往就够了
+  - 只有当输入规模变大，例如：
+    - 大量学习记录
+    - 多学科并行
+    - 多阶段目标拆分
+    - 才可能升级到 `D`
+
+### 本轮纠正出来的判断标准
+
+- 不要只看任务名称，要看任务规模
+- “知识检测”不一定天然需要 subagent
+- “学习计划”也不一定只是普通文本生成，要看背后输入有多重
+- 真正决定执行路径的，不是名词，而是：
+  - 上下文大小
+  - 是否需要独立子任务
+  - 是否值得上下文隔离
+
+## 运行与工程问题记录
+
+### 问题 1：`ModuleNotFoundError: No module named 'deepagents'`
+
+- 原因：
+  - 当时使用了系统 Python，而不是项目 `.venv`
+- 纠正：
+  - 用 `uv run python ...` 或激活 `.venv` 后再运行
+
+### 问题 2：401 invalid api key
+
+- 原因：
+  - 使用了代理服务的 key，但代码仍按默认 OpenAI 路径理解
+- 纠正：
+  - 显式配置：
+    - `OPENAI_API_KEY`
+    - `OPENAI_BASE_URL`
+    - `OPENAI_MODEL`
+
+### 问题 3：500 service unavailable
+
+- 原因：
+  - 更像代理服务短时不稳定，而不是代码确定性错误
+- 当前理解：
+  - 单 agent 请求比多轮 orchestration 更稳定
+  - subagent / tools 较多时，更容易放大代理服务波动
+
+## 现在已经能说清的 3 句话
+
+1. `subagent` 的第一价值是上下文隔离，而不是“多智能体更高级”。
+2. `skill` 是流程说明包，`subagent` 是执行者。
+3. 没有命中 skill 时，Deep Agent 仍然会基于 `system prompt + tools + subagents` 继续工作。
+
+## 下一步学习方向
+
+- 下一轮重点：学 `skills + subagents + tools` 如何组合使用
+- 要重点理解真实项目里：
+  - 哪些规则应该放进 skill
+  - 哪些职责应该拆成 subagent
+  - 哪些能力应该做成 tool
+- 已新增待学习示例：
+  - [demo_04_composition.py](/Users/liangzhe/workspace/codex/deep-agents-t1/deepagents_demo/demo_04_composition.py)
+
+## 新阶段学习方向
+
+- 当前进入的新主题：`long-term memory`
+- 核心问题：
+  - 什么是跨 thread 记忆
+  - 它和普通对话历史有什么区别
+  - memory 文件、backend、store 各自扮演什么角色
+- 对应示例：
+  - [demo_05_memory.py](/Users/liangzhe/workspace/codex/deep-agents-t1/deepagents_demo/demo_05_memory.py)
+
+## 后续维护规则
+
+以后每学完一轮，持续补充以下内容：
+
+- 新学会的概念
+- 新跑通的 demo / 小项目
+- 当轮错题
+- 容易混淆的边界
+- 实战中的报错与修复经验

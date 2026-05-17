@@ -1,0 +1,33 @@
+{
+  "tool_calls": [
+    {
+      "event": "on_tool_start",
+      "name": "generate_questions",
+      "input": {
+        "topic": "Deep Agents",
+        "count": 2
+      }
+    },
+    {
+      "event": "on_tool_start",
+      "name": "search_reference",
+      "input": {
+        "topic": "Deep Agents"
+      }
+    }
+  ],
+  "tool_results": [
+    {
+      "event": "on_tool_end",
+      "name": "search_reference",
+      "output": "content='deep agents: Deep Agents is a higher-level agent harness for complex tasks. It combines planning, tools, delegation, and context management.' name='search_reference' tool_call_id='call_KxjfoS...(truncated)"
+    },
+    {
+      "event": "on_tool_end",
+      "name": "generate_questions",
+      "output": "content='1. 为什么说 Deep Agents 不是模型，而是 agent harness？\\n2. subagent 的第一价值为什么是上下文隔离？' name='generate_questions' tool_call_id='call_72po2fGDI8h4kXzizFCEdNU8'"
+    }
+  ],
+  "subagent_dispatches": [],
+  "event_count": 434
+}
