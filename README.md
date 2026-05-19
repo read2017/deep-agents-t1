@@ -20,6 +20,9 @@ You only need three ideas to get started:
 - `deepagents_demo/demo_03_skills.py`: example that shows how skills are matched and loaded
 - `deepagents_demo/demo_04_composition.py`: example that combines tools, skills, and a custom subagent
 - `deepagents_demo/demo_05_memory.py`: example that shows long-term memory across threads
+- `deepagents_demo/demo_06_permissions.py`: example that shows path-based filesystem permissions
+- `deepagents_demo/demo_07_interrupt_on.py`: example that shows pause-and-resume approval for tool calls
+- `deepagents_demo/demo_08_interrupt_primitive.py`: example that shows pausing in the middle of a tool with interrupt()
 - `deepagents_project/learning_assistant.py`: minimal project that combines the three layers into a learning assistant
 - `deepagents_demo_flow.md`: visual explanation for demo execution flow
 
@@ -60,6 +63,9 @@ UV_CACHE_DIR=.uv-cache uv run python deepagents_demo/demo_02_subagents.py
 UV_CACHE_DIR=.uv-cache uv run python deepagents_demo/demo_03_skills.py
 UV_CACHE_DIR=.uv-cache uv run python deepagents_demo/demo_04_composition.py
 UV_CACHE_DIR=.uv-cache uv run python deepagents_demo/demo_05_memory.py
+UV_CACHE_DIR=.uv-cache uv run python deepagents_demo/demo_06_permissions.py
+UV_CACHE_DIR=.uv-cache uv run python deepagents_demo/demo_07_interrupt_on.py
+UV_CACHE_DIR=.uv-cache uv run python deepagents_demo/demo_08_interrupt_primitive.py
 UV_CACHE_DIR=.uv-cache uv run python deepagents_project/learning_assistant.py
 ```
 
@@ -70,6 +76,9 @@ UV_CACHE_DIR=.uv-cache uv run python deepagents_project/learning_assistant.py
 - In `demo_03_skills.py`, focus on skill matching and progressive disclosure.
 - In `demo_04_composition.py`, focus on which responsibilities belong to tools, skills, and subagents.
 - In `demo_05_memory.py`, focus on the difference between thread history and long-term memory.
+- In `demo_06_permissions.py`, focus on how filesystem access is restricted by path and operation.
+- In `demo_07_interrupt_on.py`, focus on the difference between direct denial and pause-for-approval.
+- In `demo_08_interrupt_primitive.py`, focus on how a tool can pause halfway through execution.
 - When the task is simple, Deep Agents may not need to delegate much. That is normal.
 - All demos create `ChatOpenAI(...)` explicitly, so they can target official OpenAI or any OpenAI-compatible endpoint.
 

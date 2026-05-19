@@ -50,9 +50,9 @@ def build_agent_and_store():
         "/memories/preferences.md",
         create_file_data(
             """## Preferences
-- Start with a short answer
-- Use Chinese
-"""
+            - Start with a short answer
+            - Use Chinese
+            """
         ),
     )
 
@@ -61,13 +61,13 @@ def build_agent_and_store():
     agent = create_deep_agent(
         model=model,
         memory=["/memories/preferences.md"],
-        backend=lambda rt: CompositeBackend(
-            default=StateBackend(rt),
+        backend=CompositeBackend(
+            default=StateBackend(),
             routes={
                 # 固定用 ("my-agent",) 作为命名空间，
                 # 表示这个 agent 在不同 thread 间共享同一份记忆。
                 "/memories/": StoreBackend(
-                    rt,
+                    store=store,
                     namespace=lambda rt: ("my-agent",),
                 ),
             },
@@ -88,7 +88,11 @@ def print_memory_snapshot(store: InMemoryStore) -> None:
     if memory_file is None:
         print("(memory file missing)")
         return
-    print(memory_file.value["text"])
+    memory_value = memory_file.value
+    if isinstance(memory_value, dict):
+        print(memory_value.get("content", memory_value))
+    else:
+        print(memory_value)
 
 
 def main():
@@ -125,7 +129,7 @@ def main():
             "messages": [
                 {
                     "role": "user",
-                    "content": "请解释一下 Deep Agents 里的 subagent 是什么。",
+                    "content": "请讲一下 Deep Agents 里的核心概念有哪些。",
                 }
             ]
         },

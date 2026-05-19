@@ -435,3 +435,112 @@ flowchart TD
 - 短期记忆：依赖同一个 thread 的对话历史
 - 长期记忆：依赖 memory 文件 + backend/store
 - thread 变了，长期记忆仍然可以生效
+
+---
+
+## Demo 06：permissions
+
+对应文件：
+[demo_06_permissions.py](/Users/liangzhe/workspace/codex/deep-agents-t1/deepagents_demo/demo_06_permissions.py)
+
+### 这个 demo 在看什么
+
+它要说明的是：
+
+- agent 看起来有文件系统工具
+- 但不代表它对所有路径都有权限
+- `permissions` 可以按路径和操作类型限制读写
+
+### Mermaid 图
+
+```mermaid
+flowchart TD
+    A["用户请求写两个文件"] --> B["主 agent 规划动作"]
+    B --> C["尝试写 /notes/today.md"]
+    B --> D["尝试写 /private/secret.txt"]
+    C --> E{"permissions 是否允许?"}
+    D --> F{"permissions 是否允许?"}
+    E -- "允许" --> G["写入成功"]
+    F -- "拒绝" --> H["写入被拦截"]
+    G --> I["主 agent 汇总结果"]
+    H --> I
+    I --> J["返回哪一步成功、哪一步被拒绝"]
+```
+
+### 这个 demo 的关键观察点
+
+- `permissions` 不是 prompt 建议，而是实际执行限制
+- 规则既可以 `allow`，也可以 `deny`
+- 限制维度包括：
+  - 操作类型：`read` / `write`
+  - 路径模式：如 `/notes/**`
+
+---
+
+## Demo 07：interrupt_on
+
+对应文件：
+[demo_07_interrupt_on.py](/Users/liangzhe/workspace/codex/deep-agents-t1/deepagents_demo/demo_07_interrupt_on.py)
+
+### 这个 demo 在看什么
+
+它要说明的是：
+
+- `permissions` 是“直接允许/拒绝”
+- `interrupt_on` 是“先暂停，等人工批准，再继续”
+
+### Mermaid 图
+
+```mermaid
+flowchart TD
+    A["用户请求发送学习总结"] --> B["主 agent 计划调用 send_study_report"]
+    B --> C{"interrupt_on 是否命中?"}
+    C -- "命中" --> D["暂停执行并返回 interrupt 信息"]
+    D --> E["人类查看工具名、参数、允许的决策"]
+    E --> F["给出 approve / edit / reject"]
+    F --> G["Command(resume=...) 恢复执行"]
+    G --> H["工具按批准后的参数执行"]
+    H --> I["主 agent 返回最终结果"]
+```
+
+### 这个 demo 的关键观察点
+
+- `interrupt_on` 不会像 `permissions` 那样直接报拒绝
+- 它会先暂停
+- 恢复执行时必须复用同一个 `thread_id`
+- 如果允许 `edit`，人类可以改参数后再继续
+
+---
+
+## Demo 08：interrupt() 原语
+
+对应文件：
+[demo_08_interrupt_primitive.py](/Users/liangzhe/workspace/codex/deep-agents-t1/deepagents_demo/demo_08_interrupt_primitive.py)
+
+### 这个 demo 在看什么
+
+它和 `demo_07` 的区别是：
+
+- `demo_07`：工具调用前被统一拦截
+- `demo_08`：工具已经开始执行，执行到中间某一步时主动暂停
+
+### Mermaid 图
+
+```mermaid
+flowchart TD
+    A["用户请求起草学习提醒邮件"] --> B["主 agent 调用 draft_learning_email"]
+    B --> C["工具先生成建议主题和正文草稿"]
+    C --> D["工具内部调用 interrupt(...)"]
+    D --> E["暂停，并把 suggested_subject / draft_body 发给人"]
+    E --> F["人提供确认后的主题"]
+    F --> G["Command(resume=...) 恢复执行"]
+    G --> H["工具继续后半段逻辑"]
+    H --> I["返回最终邮件草稿"]
+```
+
+### 这个 demo 的关键观察点
+
+- `interrupt_on` 更适合“工具调用前审批”
+- `interrupt()` 更适合“工具执行中途暂停”
+- 这里的人类输入不是 `approve/edit/reject` 三选一
+- 而是直接把中间参数值回填给工具

@@ -3,11 +3,13 @@
 ## 当前阶段
 
 - 学习主题：LangChain Deep Agents 入门
-- 当前进度：已完成 `demo_01`、`demo_02`、`demo_03`、`demo_04`
+- 当前进度：已完成 `demo_01`、`demo_02`、`demo_03`、`demo_04`、`demo_05`、`demo_06`、`demo_07`、`demo_08`
 - 已开始接触：
   - 微项目设计
   - 运行日志阅读
   - long-term memory
+  - permissions
+  - human-in-the-loop
 - 当前阶段判断：
   - 已经理解主线概念
   - 已经能区分 `tool / skill / subagent`
@@ -106,6 +108,34 @@
 - 当前理解：
   - 记忆能力不是普通聊天上下文，而是持久化能力
 
+### demo_06_permissions.py
+
+- 目标：理解文件系统权限限制
+- 关键点：
+  - 有文件工具不代表对所有路径都有权限
+  - `permissions` 按操作类型和路径模式做 allow / deny
+- 当前理解：
+  - `permissions` 是静态边界，不是 prompt 建议
+
+### demo_07_interrupt_on.py
+
+- 目标：理解工具调用前的暂停审批
+- 关键点：
+  - `interrupt_on` 会先暂停，再等待人工决策
+  - 支持 `approve / edit / reject`
+  - 恢复执行依赖 `checkpointer + 同一个 thread_id`
+- 当前理解：
+  - 这是一种配置式 human-in-the-loop
+
+### demo_08_interrupt_primitive.py
+
+- 目标：理解 tool 执行到一半时如何主动暂停
+- 关键点：
+  - `interrupt()` 发生在 tool 内部
+  - 人类回填的不一定是审批动作，也可以是中间参数值
+- 当前理解：
+  - `interrupt()` 比 `interrupt_on` 粒度更细
+
 ## 关键理解纠正
 
 ### 纠正 1：Deep Agents 不是“更聪明的聊天”
@@ -151,6 +181,15 @@
   - subagent 也可以调用 tool
   - subagent 甚至可能一个 tool 都不调
   - 所以判断 subagent，要看是否真的出现 `task(subagent_type=...)`
+
+### 纠正 6：human-in-the-loop 不只等于 interrupt_on
+
+- 容易出现的误解：
+  - 把 HITL 直接等同于 `interrupt_on`
+- 正确认识：
+  - `human-in-the-loop` 是更上层的设计概念
+  - `interrupt_on` 是工具调用前审批的一种实现
+  - `interrupt()` 是工具执行中途暂停的更底层实现
 
 ## 错题本
 
@@ -435,6 +474,27 @@
 - 纠正：
   - 只在检测到 `task` tool 且参数里存在 `subagent_type` 时，才打印真正的 subagent dispatch 日志
 
+### 问题 6：memory demo 读取字段写错
+
+- 现象：
+  - `KeyError: 'text'`
+- 原因：
+  - `create_file_data()` 生成的数据字段是 `content`，不是 `text`
+- 纠正：
+  - 读取 memory 快照时改为优先取 `content`
+
+### 问题 7：memory demo backend 写法过时
+
+- 现象：
+  - `StateBackend(rt)` / `StoreBackend(rt, ...)` / backend factory 触发弃用警告
+- 原因：
+  - 当前安装版 deepagents 推荐直接传 backend 实例
+- 纠正：
+  - 改成：
+    - `StateBackend()`
+    - `StoreBackend(store=store, namespace=...)`
+    - `backend=CompositeBackend(...)`
+
 ## 运行与工程问题记录
 
 ### 问题 1：`ModuleNotFoundError: No module named 'deepagents'`
@@ -488,6 +548,113 @@
 - 对应示例：
   - [demo_05_memory.py](/Users/liangzhe/workspace/codex/deep-agents-t1/deepagents_demo/demo_05_memory.py)
 
+## Memory 学习结论
+
+### 本轮真正学会了什么
+
+- `short-term memory` 和 `long-term memory` 的区别
+- `memory` / `backend` / `store` / `agent` 各自负责什么
+- `/memories/preferences.md` 在当前 demo 里是逻辑路径，不是本地磁盘真实文件
+- 为什么长期记忆和普通临时文件要分开存
+
+### 当前可复述的标准说法
+
+- `memory`
+  - 声明哪些文件属于长期记忆
+- `backend`
+  - 决定这些逻辑文件路径走哪条存储路由
+- `store`
+  - 底层真正保存长期数据的地方
+- `agent`
+  - 负责判断用户输入里哪些信息值得写入长期记忆
+
+### 本轮关键理解
+
+- 用户输入不会一开始就自动按 backend 分类存储
+- 正确顺序是：
+  - 先进入 `messages`
+  - agent 判断是否值得长期记忆
+  - 如果写到 `/memories/...`
+  - backend 再把它路由到 `StoreBackend`
+
+### 本轮结果验证
+
+- Thread 1 确实更新了 memory 文件
+- Thread 2 在不同 `thread_id` 下仍能继续使用这份记忆
+- 所以这次验证通过的是：
+  - 跨 thread 的 long-term memory
+  - 不是单纯的会话上下文延续
+
+## Permissions / HITL 学习结论
+
+### `permissions`
+
+- 作用：
+  - 对文件系统访问做静态边界限制
+- 判断维度：
+  - 操作类型：`read` / `write`
+  - 路径模式：如 `/notes/**`
+- 本轮结论：
+  - `permissions` 不是提示词建议，而是真正的执行约束
+
+### `interrupt_on`
+
+- 作用：
+  - 在工具调用前暂停，等待人工审批
+- 典型决策：
+  - `approve`
+  - `edit`
+  - `reject`
+- 本轮结论：
+  - 它适合“可以做，但做之前必须看一眼”的动作
+
+### `interrupt()`
+
+- 作用：
+  - 在 tool 或 graph 执行到中间步骤时主动暂停
+- 特点：
+  - 不一定返回审批动作
+  - 也可以要求人类直接回填一个中间参数值
+- 本轮结论：
+  - 它比 `interrupt_on` 粒度更细，更适合执行中确认
+
+### `human-in-the-loop`
+
+- 作用：
+  - 是“人参与关键执行闭环”的总概念
+- 和具体机制的关系：
+  - `interrupt_on` 是一种实现
+  - `interrupt()` 也是一种实现
+
+### 本轮关键边界总结
+
+- `permissions`
+  - 能不能做
+- `interrupt_on`
+  - 做之前先审批
+- `interrupt()`
+  - 做到一半再确认
+- `human-in-the-loop`
+  - 人参与关键节点决策的整体机制
+
+### 本轮真实运行结论
+
+- `demo_06_permissions.py`
+  - `/notes/today.md` 写入成功
+  - `/private/secret.txt` 写入失败
+  - 说明 permissions 已真实生效
+
+- `demo_07_interrupt_on.py`
+  - agent 先返回待审批工具及原始参数
+  - 恢复执行时用编辑后的参数继续
+  - 说明 `interrupt_on` 的 pause / edit / resume 跑通
+
+- `demo_08_interrupt_primitive.py`
+  - tool 先执行前半段
+  - 中途 `interrupt()` 把建议主题和草稿正文交给人
+  - 恢复后继续后半段执行
+  - 说明执行中暂停链路跑通
+
 ## 今天的阶段结论
 
 - 已掌握：
@@ -498,10 +665,11 @@
     - 第几轮模型推理
     - 哪些 tools 被调用
     - 有没有真正 dispatch subagent
+  - `memory / backend / store / agent` 在长期记忆里的分工
+  - `permissions / interrupt_on / interrupt() / human-in-the-loop` 的边界
 - 下一次继续时，优先学习：
-  - long-term memory
-  - backend / store / memory file 三者关系
-  - 如何设计真正跨 thread 生效的 agent 记忆
+  - 更完整的生产级 agent 安全与控制面
+  - 真实项目里怎么组合长期记忆、权限和人工审批
 
 ## 后续维护规则
 
