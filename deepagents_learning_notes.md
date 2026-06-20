@@ -3,12 +3,13 @@
 ## 当前阶段
 
 - 学习主题：LangChain Deep Agents 入门
-- 当前进度：已完成 `demo_01`、`demo_02`、`demo_03`、`demo_04`、`demo_05`、`demo_06`、`demo_07`、`demo_08`
+- 当前进度：已完成 `demo_01`、`demo_02`、`demo_03`、`demo_04`、`demo_05`、`demo_06`、`demo_07`、`demo_08`、`demo_09`、`demo_10`
 - 已开始接触：
   - 微项目设计
   - 运行日志阅读
   - long-term memory
   - permissions
+  - middleware
   - human-in-the-loop
 - 当前阶段判断：
   - 已经理解主线概念
@@ -670,6 +671,56 @@
 - 下一次继续时，优先学习：
   - 更完整的生产级 agent 安全与控制面
   - 真实项目里怎么组合长期记忆、权限和人工审批
+
+## Middleware 学习结论
+
+### `middleware`
+
+- 作用：
+  - 作为执行链路中的统一控制层，插手 model / tool / agent 生命周期
+- 不是：
+  - 不是一个业务工具
+  - 不是一个子任务执行者
+- 更像：
+  - 守门员 / 拦截器 / 调度器 / 限流器
+
+### 当前理解
+
+- `tool`
+  - 负责真正做某个动作
+- `subagent`
+  - 负责独立完成一块子任务
+- `middleware`
+  - 负责决定动作是否放行、是否改写、是否限流、是否注入统一规则
+
+### demo_09 的验证点
+
+- `wrap_tool_call`
+  - 可以在工具执行前统一拦截某个工具
+- `ToolCallLimitMiddleware`
+  - 可以给整轮 agent 执行增加工具调用上限
+
+### demo_10 的验证点
+
+- `wrap_tool_call`
+  - 不只能拦截，也可以改写请求后再放行
+- `request.tool_call`
+  - 表示模型刚规划出的原始工具调用
+- `request.override(tool_call=...)`
+  - 是中间件改写工具参数的推荐方式
+
+### 本轮新增理解：middleware 改写
+
+- “拦截”
+  - 工具根本不执行
+- “改写”
+  - 工具仍然执行，但执行参数已经被 middleware 改过
+- 所以判断是否是“改写”的关键，不是看用户最初说了什么
+- 而是看真实 tool 最终收到的参数是什么
+
+### 一句话总结
+
+- `middleware` 是 Deep Agents 的执行控制面，不是动作层。
 
 ## 后续维护规则
 

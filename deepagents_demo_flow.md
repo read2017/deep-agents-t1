@@ -450,6 +450,7 @@ flowchart TD
 - agent 看起来有文件系统工具
 - 但不代表它对所有路径都有权限
 - `permissions` 可以按路径和操作类型限制读写
+- 如果配合 `FilesystemBackend`，逻辑路径还能真实映射到本地磁盘文件
 
 ### Mermaid 图
 
@@ -460,7 +461,7 @@ flowchart TD
     B --> D["尝试写 /private/secret.txt"]
     C --> E{"permissions 是否允许?"}
     D --> F{"permissions 是否允许?"}
-    E -- "允许" --> G["写入成功"]
+    E -- "允许" --> G["通过 FilesystemBackend 写入真实文件"]
     F -- "拒绝" --> H["写入被拦截"]
     G --> I["主 agent 汇总结果"]
     H --> I
@@ -471,6 +472,9 @@ flowchart TD
 
 - `permissions` 不是 prompt 建议，而是实际执行限制
 - 规则既可以 `allow`，也可以 `deny`
+- `permissions` 不等于 `backend`
+- `permissions` 决定“能不能写”
+- `FilesystemBackend` 决定“写到哪里”
 - 限制维度包括：
   - 操作类型：`read` / `write`
   - 路径模式：如 `/notes/**`
@@ -544,3 +548,87 @@ flowchart TD
 - `interrupt()` 更适合“工具执行中途暂停”
 - 这里的人类输入不是 `approve/edit/reject` 三选一
 - 而是直接把中间参数值回填给工具
+
+---
+
+## Demo 09：middleware
+
+对应文件：
+[demo_09_middleware.py](/Users/liangzhe/workspace/codex/deep-agents-t1/deepagents_demo/demo_09_middleware.py)
+
+### 这个 demo 在看什么
+
+这一章不是增加一个“新动作”，而是增加一个“新控制层”。
+
+- `tool`：负责真正做动作
+- `subagent`：负责承包一个独立子任务
+- `middleware`：负责在执行链路中统一插手和控制
+
+这个 demo 里做了两件事：
+
+1. 用 `wrap_tool_call` 定向拦截 `save_note`
+2. 用 `ToolCallLimitMiddleware` 限制本轮工具调用次数
+
+### Mermaid 图
+
+```mermaid
+flowchart TD
+    A["用户请求：查资料并保存笔记"] --> B["主 agent 规划 3 个动作"]
+    B --> C["调用 search_reference(Deep Agents)"]
+    C --> D["middleware 检查"]
+    D --> E["放行，工具真实执行"]
+    E --> F["调用 search_reference(middleware)"]
+    F --> G["middleware 再检查"]
+    G --> H["放行，工具真实执行"]
+    H --> I["调用 save_note(...)"]
+    I --> J["wrap_tool_call 命中 save_note"]
+    J --> K["直接返回拦截结果，不执行真实工具"]
+    K --> L["主 agent 汇总最终解释"]
+```
+
+### 这个 demo 的关键观察点
+
+- `middleware` 不等于 `tool`
+- 它不是帮 agent “做业务动作”
+- 它是帮 agent “控制动作怎么执行”
+- 同一个 middleware 可以统一作用于多个工具调用
+- 不改 tool 本身，也能实现拦截、限流、改写、审计
+
+---
+
+## Demo 10：middleware 改写
+
+对应文件：
+[demo_10_middleware_rewrite.py](/Users/liangzhe/workspace/codex/deep-agents-t1/deepagents_demo/demo_10_middleware_rewrite.py)
+
+### 这个 demo 在看什么
+
+这个 demo 专门只讲一件事：
+
+- middleware 不是只会“挡住”
+- 它也可以“改完再放行”
+
+这里的流程是：
+
+1. 模型计划调用 `send_study_report`
+2. middleware 先读取这次工具调用的原始参数
+3. middleware 把收件人、主题、摘要改写成更安全/更规范的版本
+4. 再把改写后的请求继续交给真实工具执行
+
+### Mermaid 图
+
+```mermaid
+flowchart TD
+    A["用户请求发送学习报告"] --> B["主 agent 规划 send_study_report"]
+    B --> C["middleware 读取原始 tool_call"]
+    C --> D["改写 to / subject / summary"]
+    D --> E["handler(rewritten_request) 放行"]
+    E --> F["真实 tool 用改写后的参数执行"]
+    F --> G["主 agent 解释原始计划和最终执行差异"]
+```
+
+### 这个 demo 的关键观察点
+
+- “拦截”是直接不让工具执行
+- “改写”是工具仍然执行，但执行时用的已经不是模型最初给出的参数
+- `request.override(tool_call=...)` 是这类改写的推荐写法

@@ -1,5 +1,6 @@
 import os
 
+from deepagents.backends import FilesystemBackend
 from deepagents import FilesystemPermission, create_deep_agent
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -35,8 +36,36 @@ def build_agent():
     """构建一个带文件权限限制的 Deep Agent。"""
     model = build_model()
 
-    # 这里只开放 /notes/** 的读写权限，
-    # 同时显式拒绝 agent 写 /private/**。
+    # 这一版 demo 显式使用 FilesystemBackend，
+    # 让 /notes/today.md 真正落到当前项目目录中，而不是只存在内存态 state 里。
+    #
+    # root_dir 指向当前工作目录：
+    # /Users/liangzhe/workspace/codex/deep-agents-t1
+    #
+    # virtual_mode=True 的含义是：
+    # agent 看到的是“虚拟绝对路径”，例如 /notes/today.md，
+    # 但它最终会被映射到 root_dir 下的真实文件：
+    # /Users/liangzhe/workspace/codex/deep-agents-t1/notes/today.md
+    #
+    # 这样做有两个好处：
+    # 1. 用户提示词里仍然可以写简洁的 /notes/... 路径
+    # 2. 我们又能在本地磁盘里真实看到生成的文件
+    backend = FilesystemBackend(
+        root_dir=os.getcwd(),
+        virtual_mode=True,
+    )
+
+    # permissions 只负责“准不准访问某路径”，
+    # 它不决定文件最终存在哪里。
+    # 真正决定存储位置的是 backend。
+    #
+    # 下面这组规则表示：
+    # - 允许读写 /notes/**
+    # - 明确拒绝写 /private/**
+    #
+    # 所以：
+    # /notes/today.md 可以写
+    # /private/secret.txt 会被拦住
     permissions = [
         FilesystemPermission(
             operations=["read", "write"],
@@ -52,6 +81,7 @@ def build_agent():
 
     return create_deep_agent(
         model=model,
+        backend=backend,
         permissions=permissions,
         system_prompt=(
             "You are a concise AI engineering mentor. "
@@ -77,6 +107,16 @@ def main():
         {"messages": [{"role": "user", "content": user_prompt}]}
     )
     print(result["messages"][-1].content)
+
+    # 额外打印真实落盘路径，方便你把“逻辑路径”和“真实文件路径”对上。
+    print("\n=== 真实文件路径 ===")
+    print(
+        os.path.join(
+            os.getcwd(),
+            "notes",
+            "today.md",
+        )
+    )
 
 
 if __name__ == "__main__":
